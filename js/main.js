@@ -6,7 +6,7 @@ function main() {
   var rects = {};
 
 function showNodeGenerator(){
-  var i=1;
+  var i=0;
   for(key in prim_fn){
     nodeGenerator(key,i);
     i++;
@@ -14,12 +14,12 @@ function showNodeGenerator(){
 }
 
 function nodeGenerator(key,i){
-    draw.text(key).move(50,30*i).click(function(){
+    draw.text(key).move(5,30*i).click(function(){
       addNode(prim_fn[key]);      
     });
     var rect = draw.rect(90,30).attr({
-      fill:'#dfcfcf',
-      x:50,
+      fill:'#bfafaf',
+      x:5,
       y:30*i,
       opacity:0.4
     });

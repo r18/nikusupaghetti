@@ -1,7 +1,7 @@
 var draw;
 var nodes = [];
 var nodeWidth = 150;
-var nodeHeight = 250;
+var nodeHeight = 150;
 var nodeSelectedBGColor = "ff0000";
 var nodeBGColor = "cccc00";
 var nodeInputWidth = 30;
@@ -9,6 +9,7 @@ var nodeInputHeight = 30;
 var nodeOutputWidth = 30;
 var nodeOutputHeight = 30;
 var selected = "";
+var selectedNode = "";
 var arrows = [];
 var ctx = AudioContext(); 
 var tmp;
@@ -22,17 +23,16 @@ function addNode(genNode) {
     nodes.push(genNode);
 }
 
-function node(name,init,update,inputs,outputs) {
+function node(name,init,update,eval,inputs,outputs) {
     var node = {
         selected: false,
-        init: function (name,init,update,inputs,outputs) {
+        init: function (name,init,update,eval,inputs,outputs) {
             this.inputs = [];
             this.outputs = [];
             this.box = draw.nested().draggable();
-            
+            this.unitUpdate = update; 
             this.box.on('mousemove', function (e) {
                 if (e.buttons == 1) {
-                    //this.update();
                     for (i in this.inputs) {
                         if (this.inputs[i].arrow) {
                             this.inputs[i].arrow.update(null, this.inputs[i].getCenter());
@@ -45,9 +45,12 @@ function node(name,init,update,inputs,outputs) {
                     }
                 }
             }.bind(this));
+            this.box.on('dblclick',function(){
+              this.unitUpdate(this);
+            }.bind(this));
 
-            this.box.on('dblclick',function(){console.log("updated");this.update();}.bind(this));
-            this.box.rect(150, 200).attr({
+            this.box.on('dblclick',function(){this.update();}.bind(this));
+            this.box.rect(nodeWidth,nodeHeight).attr({
                 fill: nodeSelectedBGColor,
                 'fill-opacity': 0.5,
                 stroke: '#000',
@@ -58,17 +61,21 @@ function node(name,init,update,inputs,outputs) {
                 x: 70
             });
             init(this);
-            this.fn= update;
-            this.addInput();
+            this.fn = eval;
             this.addOutput();
+            for(key in inputs){
+              this.addInput(key,inputs[key]);
+            }
+
             this.update();
         },
-        addInput: function () {
+        addInput: function (arg,argType) {
             var input = this.box.rect(nodeInputWidth, nodeInputHeight).attr({
                 x: 0,
                 y: nodeInputHeight * 2 + this.inputs.length * (nodeInputHeight * 1.2)
             });
             input.io = 'in';
+            input.argName = arg;
 
             input.on('mouseover', function (e) {
                 this.box.fixed();
@@ -119,6 +126,7 @@ function node(name,init,update,inputs,outputs) {
                 y: nodeOutputHeight * 2 + this.outputs.length * (nodeOutputHeight * 1.2)
             });
             output.io = 'out';
+            output.argName = "output";
 
             output.on('mouseover', function (e) {
                 this.box.fixed();
@@ -166,29 +174,25 @@ function node(name,init,update,inputs,outputs) {
         },
 
         collectVal: function(){
-          var res = {};
+          var res = [];
           for(i in this.inputs){
             if(this.inputs[i].childNode != undefined){
-              console.log(this.inputs[i].childNode);
               var r = this.inputs[i].childNode.update();
-              for(key in r){
-                res[key] = r[key];
-              }
+              res.push(r);
             }
           }
           for(key in this.constants){
-            res[key] = this.constants[key];
+            res.push(this.constants[key]);
           }
           this.args = res;
         }, 
         
         update: function(){
-          console.log("evaluated");
           this.collectVal();
           return this.fn(this,this.args);
         },
     };
-    node.init(name,init,update,inputs,outputs);
+    node.init(name,init,update,eval,inputs,outputs);
     return node;
 }
 
@@ -197,7 +201,6 @@ function arrow(src, dst) {
         init: function (src, dst) {
             this.dst = dst;
             this.src = src;
-            console.log(this.dst.x + ":" + this.src.x);
 
             this.draw();
         },
